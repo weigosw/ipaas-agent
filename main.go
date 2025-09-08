@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"os"
 
 	"github.com/judwhite/go-svc"
 	StreamClientLogger "github.com/open-dingtalk/dingtalk-stream-sdk-go/logger"
@@ -29,17 +31,34 @@ var (
 func (p *program) Init(env svc.Environment) error {
 	// 初始化日志
 	// logger.InitLogger()
+
+	// 获取环境标识，支持命令行参数和环境变量
+	var environment string
+	flag.StringVar(&environment, "env", "", "指定环境 (dev, prod, test)")
+	flag.Parse()
+
+	// 如果命令行没有指定，则从环境变量获取
+	if environment == "" {
+		environment = os.Getenv("IPAAS_ENV")
+	}
+
+	// 默认为 dev 环境
+	if environment == "" {
+		environment = "dev"
+	}
+
 	// 打印版本信息
 	logger.Log1.WithFields(logrus.Fields{
-		"buildTime": BuildTime,
-		"gitCommit": GitCommit,
-		"version":   Version,
+		"buildTime":   BuildTime,
+		"gitCommit":   GitCommit,
+		"version":     Version,
+		"environment": environment,
 	}).Info("启动程序")
 
 	StreamClientLogger.SetLogger(logger.Log2)
 
 	// 读取配置文件
-	err := config.LoadConfig()
+	err := config.LoadConfig(environment)
 	if err != nil {
 		logger.Log1.Error("加载配置文件出错: ", err)
 		return err

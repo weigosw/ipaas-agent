@@ -28,23 +28,35 @@ func init() {
 	}
 }
 
-func LoadConfig() error {
+func LoadConfig(environment string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	logger.Log1.Info("加载配置文件...")
+	logger.Log1.WithField("environment", environment).Info("加载配置文件...")
 
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	// 添加配置文件路径
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("./config")
+	// 如果没有设置特定的配置文件，则根据环境设置配置文件名
+	if viper.ConfigFileUsed() == "" {
+		// 根据环境设置配置文件名
+		configName := "config"
+		if environment != "" {
+			configName = "config." + environment
+		}
+
+		viper.SetConfigName(configName)
+		viper.SetConfigType("yaml")
+		// 添加配置文件路径
+		viper.AddConfigPath(".")
+		viper.AddConfigPath("./config")
+	}
 
 	err := viper.ReadInConfig()
 	if err != nil {
 		logger.Log1.Errorf("读取配置文件出错: %v", err)
 		return err
 	}
+
+	// 记录实际加载的配置文件
+	logger.Log1.WithField("configFile", viper.ConfigFileUsed()).Info("成功加载配置文件")
 
 	// 启用从环境变量读取配置
 	viper.AutomaticEnv()
@@ -57,6 +69,11 @@ func LoadConfig() error {
 	viper.SetDefault("auth.mysql.allow_remote", false)
 
 	return nil
+}
+
+// LoadConfigDefault 加载默认配置文件 (兼容性函数)
+func LoadConfigDefault() error {
+	return LoadConfig("")
 }
 
 func WatchConfig(onChange func()) {
